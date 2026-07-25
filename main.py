@@ -303,14 +303,24 @@ def post_detail(post_id: int, request: Request):
     img = post['image_url']
     img_tag = f"<img src='{img}' class='w-full max-h-[500px] object-contain bg-gray-50 rounded-xl mb-6'>" if img else ""
     
+    # 댓글 삭제 버튼 추가 로직
     comments_html = ""
     for c in comments:
+        delete_btn = ""
+        if current_user == c['username']:
+            delete_btn = f"""
+            <form action="/comment/{c['id']}/delete" method="post" class="inline m-0 p-0">
+                <button type="submit" class="text-xs text-red-400 hover:text-red-600 font-bold transition ml-4">삭제</button>
+            </form>
+            """
+        
         comments_html += f"""
         <div class="py-3 border-b border-gray-100 flex justify-between items-center text-sm">
             <div>
                 <span class="font-bold text-black mr-2">{c['username']}</span>
                 <span class="text-gray-700">{c['content']}</span>
             </div>
+            {delete_btn}
         </div>
         """
         
@@ -323,6 +333,15 @@ def post_detail(post_id: int, request: Request):
         """
     else:
         comment_form = "<div class='py-4 text-center bg-gray-50 rounded-lg text-xs text-gray-500'>댓글을 작성하려면 <a href='/login' class='underline font-bold text-black'>로그인</a>이 필요합니다.</div>"
+    
+    # 본인 게시글 삭제 버튼 추가 로직
+    post_delete_btn = ""
+    if current_user == post['username']:
+        post_delete_btn = f"""
+        <form action="/post/{post['id']}/delete" method="post" class="text-right mt-4" onsubmit="return confirm('정말로 이 교환글을 삭제하시겠습니까?');">
+            <button type="submit" class="text-xs text-red-500 hover:text-red-700 font-bold underline transition">게시글 삭제하기</button>
+        </form>
+        """
         
     content = f"""
     <div class="max-w-3xl mx-auto py-10">
@@ -338,6 +357,7 @@ def post_detail(post_id: int, request: Request):
                 <span class="text-xs text-gray-500 font-medium">포켓몬: {post['pokemon_name']}</span>
                 <span class="text-2xl font-black text-black">{post['price']}</span>
             </div>
+            {post_delete_btn}
         </div>
 
         <div>
@@ -364,3 +384,48 @@ def add_comment(post_id: int, request: Request, content: str = Form(...)):
     }).execute()
     
     return RedirectResponse(url=f"/post/{post_id}", status_code=status.HTTP_303_SEE_OTHER)
+
+# 게시글 삭제 엔드포인트
+@app.post("/post/{post_id}/delete")
+def delete_post(post_id: int, request: Request):
+    current_user = get_current_user(request)
+    if not current_user:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+    
+    post_res = supabase.table("posts").select("*").eq("id", post_id).execute()
+    if not post_res.data:
+        raise HTTPException(status_code=404, detail="게시글을 찾을 수 없습니다.")
+    
+    post = post_res.data[0]
+    if post["username"] != current_user:
+        raise HTTPException(status_code=403, detail="본인의 게시글만 삭제할 수 있습니다.")
+    
+    # 이미지 파일이 있으면 Storage에서도 깔끔하게 삭제
+    if post["image_url"]:
+        file_name = post["image_url"].split("/")[-1]
+        supabase.storage.from_("images").remove([file_name])
+        
+    # 데이터베이스에서 글 삭제
+    supabase.table("posts").delete().eq("id", post_id).execute()
+    
+    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+
+# 댓글 삭제 엔드포인트
+@app.post("/comment/{comment_id}/delete")
+def delete_comment(comment_id: int, request: Request):
+    current_user = get_current_user(request)
+    if not current_user:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+        
+    comment_res = supabase.table("comments").select("*").eq("id", comment_id).execute()
+    if not comment_res.data:
+        raise HTTPException(status_code=404, detail="댓글을 찾을 수 없습니다.")
+    
+    comment = comment_res.data[0]
+    if comment["username"] != current_user:
+        raise HTTPException(status_code=403, detail="본인의 댓글만 삭제할 수 있습니다.")
+        
+    # 데이터베이스에서 댓글 삭제
+    supabase.table("comments").delete().eq("id", comment_id).execute()
+    
+    return RedirectResponse(url=f"/post/{comment['post_id']}", status_code=status.HTTP_303_SEE_OTHER)
