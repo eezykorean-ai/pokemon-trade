@@ -49,7 +49,7 @@ init_db()
 def get_current_user(request: Request) -> Optional[str]:
     return request.cookies.get("username")
 
-# KREAM 스타일 공통 레이아웃 (미니멀 블랙 & 화이트)
+# KREAM 스타일 공통 레이아웃 + 저작권 면책 조항 추가
 def layout(title: str, content: str, current_user: Optional[str] = None):
     nav = f"""
     <nav class="sticky top-0 z-50 bg-white border-b border-gray-200">
@@ -61,6 +61,21 @@ def layout(title: str, content: str, current_user: Optional[str] = None):
         </div>
     </nav>
     """
+    
+    footer = """
+    <footer class="border-t border-gray-200 py-10 mt-12 bg-gray-50">
+        <div class="max-w-6xl mx-auto px-6 text-center">
+            <p class="text-xs font-black text-gray-600 mb-2 uppercase tracking-widest">Disclaimer</p>
+            <p class="text-xs text-gray-400 mb-4 leading-relaxed">
+                본 사이트는 포켓몬 카드 수집가들을 위한 개인 간 중고 거래 플랫폼입니다.<br>
+                본 서비스는 (주)포켓몬코리아, Nintendo, Creatures, GAME FREAK 등 공식 권리자와 어떠한 제휴 및 관련도 없음을 명시합니다.<br>
+                등록된 모든 상품의 거래 책임은 거래 당사자에게 있습니다.
+            </p>
+            <p class="text-xs text-gray-300">&copy; 2026 POKEMON TRADE MARKET. All Rights Reserved.</p>
+        </div>
+    </footer>
+    """
+    
     return f"""
     <!DOCTYPE html>
     <html lang="ko">
@@ -77,9 +92,7 @@ def layout(title: str, content: str, current_user: Optional[str] = None):
                 {content}
             </main>
         </div>
-        <footer class="border-t border-gray-200 py-8 text-center text-xs text-gray-400">
-            &copy; 2026 POKEMON TRADE MARKET. All Rights Reserved.
-        </footer>
+        {footer}
     </body>
     </html>
     """
@@ -272,10 +285,17 @@ def write_page(request: Request):
                 <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">가격 또는 교환 조건</label>
                 <input type="text" name="price" required placeholder="예: 45,000원 또는 피카츄 카드와 교환" class="w-full h-12 px-4 border border-gray-300 rounded-lg focus:border-black focus:outline-none transition">
             </div>
-            <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">상품 이미지</label>
-                <input type="file" name="file" class="w-full py-3 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-black file:text-white hover:file:bg-gray-800 transition">
+            
+            <!-- 사진 업로드 주의사항 추가 -->
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <label class="block text-xs font-bold uppercase tracking-wider text-black mb-2">상품 이미지 등록</label>
+                <input type="file" name="file" class="w-full py-2 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-black file:text-white hover:file:bg-gray-800 transition mb-3">
+                <p class="text-xs text-red-500 font-bold leading-relaxed">
+                    🚨 주의: 저작권 보호를 위해 반드시 본인이 직접 촬영한 '실물 카드 사진'만 업로드해 주세요.<br>
+                    (인터넷에 있는 공식 일러스트 캡처본 등은 무단 도용으로 간주되어 삭제될 수 있습니다.)
+                </p>
             </div>
+
             <div class="flex gap-4 pt-4">
                 <a href="/" class="flex-1 h-12 flex items-center justify-center border border-gray-300 text-black font-bold rounded-lg hover:bg-gray-50 transition">취소</a>
                 <button type="submit" class="flex-1 h-12 bg-black text-white font-bold rounded-lg hover:bg-gray-800 transition">등록하기</button>
